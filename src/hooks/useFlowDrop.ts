@@ -3,6 +3,7 @@
 import { useReactFlow, type Node, type XYPosition } from "@xyflow/react";
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { BLOCK_SCHEMA } from "@/core/constants/schema";
+import { getSmartDefault } from "@/core/constants/defaults";
 import type { IFunctionBlockData } from "@/components/application-canvas/nodes/FunctionBlockNode";
 
 export function useFlowDrop(setNodes: Dispatch<SetStateAction<Node[]>>) {
@@ -34,22 +35,8 @@ export function useFlowDrop(setNodes: Dispatch<SetStateAction<Node[]>>) {
             
             if (schema.config) {
                 Object.entries(schema.config).forEach(([key, type]) => {
-                    if (type === "number") {
-                        initialConfig[key] = key.startsWith("num_") ? 1 : 0;
-                    } else if (type === "string (hidden/modal)") {
-                        initialConfig[key] = "";
-                    } else if (type === "string") {
-                        initialConfig[key] = "";
-                    }
+                    initialConfig[key] = getSmartDefault(key, type);
                 });
-            }
-
-            if (schema.config.num_in) {
-                initialConfig.num_in = initialConfig.num_in || 1;
-            }
-
-            if (schema.config.num_out) {
-                initialConfig.num_out = initialConfig.num_out || 1;
             }
 
             const newNode: Node<IFunctionBlockData> = {

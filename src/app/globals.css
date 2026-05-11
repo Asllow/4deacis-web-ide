@@ -1,2 +1,36 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+
+.react-flow__edge.selected .react-flow__edge-path {
+    stroke: #f59e0b !important;
+    stroke-width: 3 !important;
+}
+
+.dark .react-flow__edge.selected .react-flow__edge-path {
+    stroke: #fbbf24 !important;
+}
+
+.monaco-editor .slider {
+    border-radius: 9999px !important;
+    background: rgba(163, 163, 163, 0.4) !important;
+}
+
+.monaco-editor .slider:hover {
+    background: rgba(163, 163, 163, 0.6) !important;
+}
+
+.monaco-editor .slider.active {
+    background: rgba(163, 163, 163, 0.8) !important;
+}
+
+.dark .monaco-editor .slider {
+    background: rgba(82, 82, 91, 0.4) !important;
+}
+
+.dark .monaco-editor .slider:hover {
+    background: rgba(82, 82, 91, 0.6) !important;
+}
+
+.dark .monaco-editor .slider.active {
+    background: rgba(82, 82, 91, 0.8) !important;
+}

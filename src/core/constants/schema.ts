@@ -110,7 +110,7 @@ export const BLOCK_SCHEMA: Record<string, IBlockSchema> = {
         events_out: ["CNF"],
         data_in: ["PAYLOAD"],
         data_out: [],
-        config: { topic: "string", qos: "number" }
+        config: { broker_url: "string", topic: "string" }
     },
     ModbusTcpServer: {
         category: "Redes",

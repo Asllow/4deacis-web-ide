@@ -3,6 +3,8 @@ import Bonjour from "bonjour-service";
 import fs from "fs/promises";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 const REGISTRY_PATH = path.join(process.cwd(), "registry.json");
 
 interface IDeviceRegistry {
@@ -13,13 +15,15 @@ interface IDeviceRegistry {
     };
 }
 
-interface IDiscoveredDevice {
+export interface IDiscoveredDevice {
     mac: string;
     board: string;
     ip: string;
     port: number;
     name: string;
-    needsProvisioning: boolean;
+    actualName: string;
+    isNew: boolean;
+    hasConflict: boolean;
 }
 
 async function getRegistry(): Promise<IDeviceRegistry> {
@@ -63,14 +67,27 @@ export async function GET() {
 
             const mac = service.txt.mac as string;
             const board = service.txt.board as string;
-            const ip = service.addresses?.[0] || "0.0.0.0";
+            const actualName = service.name || "";
+            
+            const rawAddrs = service.addresses || [];
+            const strAddrs = rawAddrs.map((addr: string | { address?: string }) => {
+                return typeof addr === "string" ? addr : (addr.address || "");
+            });
+            
+            const ipv4 = strAddrs.find((addr: string) => addr.includes(".")) || strAddrs[0] || "";
             const port = service.port;
 
             let deviceName = "";
-            let needsProvisioning = false;
+            let isNew = false;
+            let hasConflict = false;
+            const actualNameStr = String(actualName);
 
             if (registry[mac]) {
                 deviceName = registry[mac].name;
+                const safeActual = actualNameStr.trim().toLowerCase();
+                const safeExpected = String(deviceName).trim().toLowerCase();
+                isNew = false;
+                hasConflict = safeActual !== safeExpected;
             } else {
                 deviceName = generateDeviceName(board, registry);
                 registry[mac] = {
@@ -79,16 +96,19 @@ export async function GET() {
                     firstSeen: new Date().toISOString()
                 };
                 registryUpdated = true;
-                needsProvisioning = true;
+                isNew = true;
+                hasConflict = false;
             }
 
             discovered.push({
                 mac,
                 board,
-                ip,
+                ip: ipv4,
                 port,
                 name: deviceName,
-                needsProvisioning
+                actualName: actualNameStr,
+                isNew,
+                hasConflict
             });
         });
 
@@ -100,7 +120,11 @@ export async function GET() {
                 await saveRegistry(registry);
             }
 
-            resolve(NextResponse.json({ devices: discovered }));
+            const uniqueDevices = Array.from(
+                new Map(discovered.map((item) => [item.mac, item])).values()
+            );
+
+            resolve(NextResponse.json({ devices: uniqueDevices }));
         }, 3000);
     });
 }

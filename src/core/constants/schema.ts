@@ -25,7 +25,7 @@ export const BLOCK_SCHEMA: Record<string, IBlockSchema> = {
         events_out: ["CNF"],
         data_in: [],
         data_out: ["DATA_OUT"],
-        config: { unit: "number", channel: "number" }
+        config: { adc_unit: "number", adc_channel: "number" }
     },
     PwmOutput: {
         category: "IO",
@@ -106,11 +106,11 @@ export const BLOCK_SCHEMA: Record<string, IBlockSchema> = {
     MqttPublisher: {
         category: "Redes",
         description: "Publica telemetria em um broker MQTT.",
-        events_in: ["SEND"],
+        events_in: ["REQ"],
         events_out: ["CNF"],
         data_in: ["PAYLOAD"],
         data_out: [],
-        config: { broker_url: "string", topic: "string" }
+        config: { broker_uri: "string", target_topic: "string" }
     },
     ModbusTcpServer: {
         category: "Redes",

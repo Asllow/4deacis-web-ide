@@ -7,10 +7,8 @@ export interface IBlockPayload {
 }
 
 export interface IConnectionPayload {
-    src: string;
-    src_port: string;
-    dst: string;
-    dst_port: string;
+    source: string;
+    target: string;
 }
 
 export interface IDeployPayload {
@@ -18,8 +16,7 @@ export interface IDeployPayload {
     payload: {
         network_name: string;
         blocks: IBlockPayload[];
-        event_connections: IConnectionPayload[];
-        data_connections: IConnectionPayload[];
+        connections: IConnectionPayload[];
     };
 }
 
@@ -34,29 +31,27 @@ export function generateDistributedMesh(nodes: Node[], edges: Edge[], networkNam
             deployments.set(targetIp, {
                 network_name: networkName,
                 blocks: [],
-                event_connections: [],
-                data_connections: []
+                connections: []
             });
         }
 
         const rawConfig = node.data?.config ? { ...(node.data.config as Record<string, unknown>) } : {};
         const cleanConfig: Record<string, unknown> = {};
 
-        // Sanitização Rigorosa: Remove nulos, undefined e strings vazias
         for (const [key, value] of Object.entries(rawConfig)) {
             if (value !== null && value !== undefined && value !== "") {
                 cleanConfig[key] = value;
             }
         }
         
-        if (node.type === "Sandbox" && typeof cleanConfig.script === "string") {
+        if (node.data?.blockType === "Sandbox" && typeof cleanConfig.script === "string") {
             cleanConfig.script_b64 = btoa(unescape(encodeURIComponent(cleanConfig.script)));
             delete cleanConfig.script;
         }
 
         deployments.get(targetIp)!.blocks.push({
             id: node.id,
-            type: node.type || "Unknown",
+            type: (node.data?.blockType as string) || "Unknown",
             config: cleanConfig
         });
     });
@@ -72,18 +67,21 @@ export function generateDistributedMesh(nodes: Node[], edges: Edge[], networkNam
 
         const rawSrc = String(edge.sourceHandle || "");
         const rawDst = String(edge.targetHandle || "");
-        const srcPort = rawSrc.split("-").slice(1).join("-") || rawSrc;
-        const dstPort = rawDst.split("-").slice(1).join("-") || rawDst;
         
-        const isEvent = rawSrc.includes("event") || edge.type === "event";
-        const connType = isEvent ? 'event_connections' : 'data_connections';
+        const sanitizePort = (handle: string) => {
+            const port = handle.includes("-") ? handle.split("-").pop() || handle : handle;
+            return port.replace(/^(EV_IN_|EV_OUT_|DT_IN_|DT_OUT_)/, "");
+        };
+
+        const srcPort = sanitizePort(rawSrc);
+        const dstPort = sanitizePort(rawDst);
+        
+        const isEvent = rawSrc.includes("EV_") || rawSrc.includes("event") || edge.type === "event";
 
         if (srcIp === dstIp) {
-            deployments.get(srcIp)![connType].push({
-                src: edge.source,
-                src_port: srcPort,
-                dst: edge.target,
-                dst_port: dstPort
+            deployments.get(srcIp)!.connections.push({
+                source: `${edge.source}.${srcPort}`,
+                target: `${edge.target}.${dstPort}`
             });
         } else {
             const currentUdpPort = udpPortAllocator++;
@@ -100,11 +98,9 @@ export function generateDistributedMesh(nodes: Node[], edges: Edge[], networkNam
                 }
             });
 
-            deployments.get(srcIp)![connType].push({
-                src: edge.source,
-                src_port: srcPort,
-                dst: pubId,
-                dst_port: "IN"
+            deployments.get(srcIp)!.connections.push({
+                source: `${edge.source}.${srcPort}`,
+                target: `${pubId}.IN`
             });
 
             deployments.get(dstIp)!.blocks.push({
@@ -117,11 +113,9 @@ export function generateDistributedMesh(nodes: Node[], edges: Edge[], networkNam
                 }
             });
 
-            deployments.get(dstIp)![connType].push({
-                src: subId,
-                src_port: "OUT",
-                dst: edge.target,
-                dst_port: dstPort
+            deployments.get(dstIp)!.connections.push({
+                source: `${subId}.OUT`,
+                target: `${edge.target}.${dstPort}`
             });
         }
     });

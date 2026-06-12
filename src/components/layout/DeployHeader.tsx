@@ -10,6 +10,35 @@ export function DeployHeader() {
     const { getNodes, getEdges } = useReactFlow();
     const [isDeploying, setIsDeploying] = useState(false);
 
+    const downloadJsonFile = (data: unknown, filename: string) => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleExportJson = () => {
+        const nodes = getNodes();
+        const edges = getEdges();
+        const deployments = generateDistributedMesh(nodes, edges);
+
+        if (deployments.length === 0) {
+            alert("A malha está vazia. Adicione e mapeie blocos antes de exportar.");
+            return;
+        }
+
+        // Exporta um arquivo para cada ESP32 mapeado
+        deployments.forEach((dep) => {
+            const safeIp = dep.ip.replace(/\./g, "_");
+            downloadJsonFile(dep.payload, `mesh_${safeIp}.json`);
+        });
+    };
+
     const handleDeploy = async () => {
         const nodes = getNodes();
         const edges = getEdges();
@@ -26,6 +55,13 @@ export function DeployHeader() {
             alert("Malha vazia ou sem dispositivos válidos.");
             return;
         }
+
+        console.log("=== PAYLOADS GERADOS PARA DEPLOY ===");
+        deployments.forEach(dep => {
+            console.log(`Destino: ${dep.ip}`);
+            console.log(JSON.stringify(dep.payload, null, 2));
+        });
+        console.log("====================================");
 
         setIsDeploying(true);
         
@@ -51,6 +87,14 @@ export function DeployHeader() {
             
             <div className="flex items-center gap-4">
                 <ThemeToggle />
+                
+                <button 
+                    onClick={handleExportJson}
+                    className="bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 px-4 py-1.5 text-xs font-medium rounded shadow-sm transition-colors"
+                >
+                    Exportar JSON
+                </button>
+
                 <button 
                     onClick={handleDeploy}
                     disabled={isDeploying}

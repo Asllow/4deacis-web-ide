@@ -24,7 +24,7 @@ export default function Home() {
                     </div>
                 </section>
 
-                <RightSidebar />
+                <RightSidebar activeTargetIp={targetIp} />
 
             </main>
         </ReactFlowProvider>

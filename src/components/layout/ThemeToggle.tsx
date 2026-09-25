@@ -9,7 +9,6 @@ export function ThemeToggle() {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        // O setTimeout de 0ms evita a atualização síncrona exigida pelo React 19
         const timer = setTimeout(() => setMounted(true), 0);
         return () => clearTimeout(timer);
     }, []);

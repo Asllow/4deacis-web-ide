@@ -17,7 +17,6 @@ export function SystemModelSidebar({ selectedIp, onSelectIp }: ISystemModelSideb
     const [trackedDevices, setTrackedDevices] = useState<Map<string, ITrackedDevice>>(new Map());
     const [rebootingDevices, setRebootingDevices] = useState<Map<string, IDiscoveredDevice>>(new Map());
 
-    // Referências mutáveis para evitar re-renderizações e loops no useCallback
     const provisionAttempts = useRef<Map<string, number>>(new Map());
     const selectedIpRef = useRef(selectedIp);
     const onSelectIpRef = useRef(onSelectIp);
@@ -39,7 +38,6 @@ export function SystemModelSidebar({ selectedIp, onSelectIp }: ISystemModelSideb
         try {
             await provisionDevice(device.ip, device.name);
         } catch {
-            // Falha silenciosa visualmente, tratada pelo log se necessário
         }
 
         setTimeout(() => {
@@ -68,7 +66,6 @@ export function SystemModelSidebar({ selectedIp, onSelectIp }: ISystemModelSideb
                 for (const [mac, dev] of next.entries()) {
                     if (now - dev.lastSeen > 10000) {
                         next.delete(mac);
-                        // Se o dispositivo que sumiu era o selecionado, desmarcamos via Ref
                         if (selectedIpRef.current === dev.ip) {
                             onSelectIpRef.current(null);
                         }
@@ -102,11 +99,10 @@ export function SystemModelSidebar({ selectedIp, onSelectIp }: ISystemModelSideb
             });
 
         } catch {
-            setTrackedDevices(new Map()); // Limpa em caso de erro catastrófico na rede
+            setTrackedDevices(new Map());
         }
     }, [handleProvision, rebootingDevices]);
 
-    // Smart Polling: Garante que não haverá sobreposição de requisições
     useEffect(() => {
         let isMounted = true;
         let timeoutId: NodeJS.Timeout;
@@ -114,12 +110,11 @@ export function SystemModelSidebar({ selectedIp, onSelectIp }: ISystemModelSideb
         const poll = async () => {
             await scanNetwork();
             if (isMounted) {
-                // Aguarda 3 segundos APÓS a requisição anterior terminar
                 timeoutId = setTimeout(poll, 3000);
             }
         };
 
-        poll(); // Dispara a primeira vez
+        poll();
 
         return () => {
             isMounted = false;
@@ -159,8 +154,7 @@ export function SystemModelSidebar({ selectedIp, onSelectIp }: ISystemModelSideb
             
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
                 {displayList.length === 0 && (
-                    <div className="flex flex-col items-center justify-center text-center mt-8 gap-3">
-                        <div className="w-8 h-8 rounded-full border-2 border-neutral-300 border-t-blue-500 animate-spin"></div>
+                    <div className="flex flex-col items-center justify-center text-center gap-3">
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
                             Aguardando ESP32 na rede...
                         </p>
@@ -221,7 +215,7 @@ export function SystemModelSidebar({ selectedIp, onSelectIp }: ISystemModelSideb
                                     <div className="flex justify-between items-center">
                                         <span className="text-green-600 dark:text-green-400 font-medium text-[10px] flex items-center gap-1">
                                             <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                                            Online & Pronto
+                                            Online
                                         </span>
                                         {isSelected && (
                                             <span className="text-blue-600 dark:text-blue-400 font-medium text-[10px]">

@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+
+:root {
+    --my-height:  calc(var(--spacing) * 13.1);
+}
 .react-flow__edge.selected .react-flow__edge-path {
     stroke: #f59e0b !important;
     stroke-width: 3 !important;

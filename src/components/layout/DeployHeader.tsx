@@ -5,10 +5,17 @@ import { useReactFlow } from "@xyflow/react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { generateDistributedMesh } from "@/core/utils/meshParser";
 import { deployMesh } from "@/core/services/esp32.service";
+import { projectRepository } from "@/core/repositories/ProjectRepository";
+import { useAuthStore } from "@/shared/store/authStore";
 
 export function DeployHeader() {
-    const { getNodes, getEdges } = useReactFlow();
+    // Adicionado setNodes e setEdges para poder injetar a malha ao carregar
+    const { getNodes, getEdges, setNodes, setEdges } = useReactFlow();
     const [isDeploying, setIsDeploying] = useState(false);
+
+    // Conectando com o estado global de autenticação
+    const user = useAuthStore((state) => state.user);
+    const logout = useAuthStore((state) => state.logout);
 
     const downloadJsonFile = (data: unknown, filename: string) => {
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -22,6 +29,45 @@ export function DeployHeader() {
         URL.revokeObjectURL(url);
     };
 
+    const handleSaveProject = async () => {
+        if (!user) return;
+
+        const nodes = getNodes();
+        const edges = getEdges();
+
+        try {
+            await projectRepository.saveProject({
+                id: `proj_${user}_default`,
+                userId: user,
+                name: "Malha Padrão",
+                flowData: { nodes, edges },
+                updatedAt: new Date().toISOString()
+            });
+            alert("Projeto salvo com sucesso no Repositório Local.");
+        } catch (error) {
+            alert("Erro ao salvar projeto no repositório.");
+        }
+    };
+
+    const handleLoadProject = async () => {
+        if (!user) return;
+
+        try {
+            const projects = await projectRepository.loadProjectsByUser(user);
+            if (projects.length === 0) {
+                alert("Nenhum projeto encontrado para este usuário.");
+                return;
+            }
+
+            const latestProject = projects[0];
+            setNodes(latestProject.flowData.nodes || []);
+            setEdges(latestProject.flowData.edges || []);
+            
+        } catch (error) {
+            alert("Erro ao recuperar projeto do repositório.");
+        }
+    };
+
     const handleExportJson = () => {
         const nodes = getNodes();
         const edges = getEdges();
@@ -32,7 +78,6 @@ export function DeployHeader() {
             return;
         }
 
-        // Exporta um arquivo para cada ESP32 mapeado
         deployments.forEach((dep) => {
             const safeIp = dep.ip.replace(/\./g, "_");
             downloadJsonFile(dep.payload, `mesh_${safeIp}.json`);
@@ -80,13 +125,33 @@ export function DeployHeader() {
     };
 
     return (
-        <header className="h-14 border-b border-neutral-200 dark:border-neutral-800 flex items-center px-6 justify-between bg-white dark:bg-neutral-900 transition-colors duration-200 shrink-0">
-            <h1 className="font-semibold text-sm text-neutral-700 dark:text-neutral-300">
-                4diac Web IDE - Modo Distribuído
-            </h1>
-            
+        <header className="h-(--my-height) border-b border-neutral-200 dark:border-neutral-800 flex items-center px-6 justify-end bg-white dark:bg-neutral-900 transition-colors duration-200 shrink-0">
             <div className="flex items-center gap-4">
+                
+                {/* Badge do Usuário Logado */}
+                {user && (
+                    <span className="text-[10px] bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-2 py-0.5 rounded font-mono text-neutral-600 dark:text-neutral-400 mr-2 shadow-sm">
+                        Engenheiro: {user}
+                    </span>
+                )}
+
                 <ThemeToggle />
+                
+                {/* Grupo de Persistência Separado Visualmente */}
+                <div className="flex items-center gap-2 border-r border-neutral-200 dark:border-neutral-700 pr-4">
+                    <button 
+                        onClick={handleSaveProject}
+                        className="bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 px-3 py-1.5 text-xs font-medium rounded shadow-sm transition-colors"
+                    >
+                        💾 Salvar
+                    </button>
+                    <button 
+                        onClick={handleLoadProject}
+                        className="bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 px-3 py-1.5 text-xs font-medium rounded shadow-sm transition-colors"
+                    >
+                        📂 Carregar
+                    </button>
+                </div>
                 
                 <button 
                     onClick={handleExportJson}
@@ -100,8 +165,18 @@ export function DeployHeader() {
                     disabled={isDeploying}
                     className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 text-xs font-medium rounded shadow transition-colors disabled:opacity-50 disabled:cursor-wait"
                 >
-                    {isDeploying ? "Bloqueio Ativo: Injetando..." : "Injetar Malha Distribuída"}
+                    {isDeploying ? "Bloqueio Ativo: Injetando..." : "Injetar Malha"}
                 </button>
+
+                {/* Botão de Logout */}
+                {user && (
+                    <button 
+                        onClick={logout}
+                        className="text-xs text-red-600 hover:text-red-500 font-medium ml-2 transition-colors"
+                    >
+                        Sair
+                    </button>
+                )}
             </div>
         </header>
     );

@@ -1,19 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ReactFlowProvider } from "@xyflow/react";
 import { FlowCanvas } from "@/components/application-canvas/FlowCanvas";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { SystemModelSidebar } from "@/components/system-model/SystemModelSidebar";
 import { DeployHeader } from "@/components/layout/DeployHeader";
+import { useAuthStore } from "@/shared/store/authStore";
 
 export default function Home() {
     const [targetIp, setTargetIp] = useState<string | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
+    
+    const user = useAuthStore((state) => state.user);
+    const router = useRouter();
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (isMounted && !user) {
+            router.push("/login");
+        }
+    }, [user, router, isMounted]);
+
+    if (!isMounted || !user) return null;
 
     return (
         <ReactFlowProvider>
             <main className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans transition-colors duration-200">
-                
                 <SystemModelSidebar selectedIp={targetIp} onSelectIp={setTargetIp} />
 
                 <section className="flex-1 bg-neutral-100 dark:bg-neutral-950 flex flex-col relative transition-colors duration-200">
@@ -25,7 +42,6 @@ export default function Home() {
                 </section>
 
                 <RightSidebar activeTargetIp={targetIp} />
-
             </main>
         </ReactFlowProvider>
     );
